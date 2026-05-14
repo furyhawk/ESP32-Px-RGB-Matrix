@@ -1,0 +1,10 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "font/font_5x7.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        esp32_s3_matrix_driver
+        lvgl
+)

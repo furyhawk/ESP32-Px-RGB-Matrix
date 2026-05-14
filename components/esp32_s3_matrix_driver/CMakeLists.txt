@@ -1,0 +1,10 @@
+idf_component_register(
+    SRCS
+        "esp32_px_matrix.c"
+        "hub75_bridge.cpp"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        lvgl__lvgl
+        esphome__esp-hub75
+)
