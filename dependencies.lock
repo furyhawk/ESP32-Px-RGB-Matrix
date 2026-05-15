@@ -15,6 +15,30 @@ dependencies:
     - esp32c6
     - esp32p4
     version: 0.3.6
+  espressif/button:
+    component_hash: d0afa32f0e50d60bc0c6fc23f7eea98adc6b02cfe70b590bc52c23c506745287
+    dependencies:
+    - name: espressif/cmake_utilities
+      registry_url: https://components.espressif.com
+      require: private
+      version: '*'
+    - name: idf
+      require: private
+      version: '>=4.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 4.1.6
+  espressif/cmake_utilities:
+    component_hash: 05165f30922b422b4b90c08845e6d449329b97370fbd06309803d8cb539d79e3
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.1'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.1.1
   espressif/esp-dsp:
     component_hash: ed9ac175b14e0414399a2b33c525579414b5bad19a2a67b12ea212def96f9a98
     dependencies:
@@ -102,6 +126,7 @@ dependencies:
     version: 1.0.1
 direct_dependencies:
 - esphome/esp-hub75
+- espressif/button
 - espressif/esp-dsp
 - espressif/esp_codec_dev
 - espressif/esp_jpeg
@@ -111,6 +136,6 @@ direct_dependencies:
 - pedrominatel/shtc3
 - waveshare/pcf85063a
 - waveshare/qmi8658
-manifest_hash: dfdadd87395a9c027a44eb2329e62bdaae2e249c47ca8d54172f96bd9557f86e
+manifest_hash: 3540609a50e3233234e4c862a61d22fdd08528db5b41e4bc60002cff53b62f21
 target: esp32s3
 version: 2.0.0

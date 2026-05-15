@@ -5,7 +5,7 @@ idf_component_register(
     INCLUDE_DIRS
         "."
     REQUIRES
-        esp32_s3_matrix_driver
+        esp32_s3_matrix
         lvgl
         Middleware
 )

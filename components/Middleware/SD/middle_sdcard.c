@@ -1,5 +1,5 @@
 #include "middle_sdcard.h"
-#include "esp32_px_matrix.h"
+#include "bsp/esp32_s3_matrix.h"
 #include "esp_check.h"
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"

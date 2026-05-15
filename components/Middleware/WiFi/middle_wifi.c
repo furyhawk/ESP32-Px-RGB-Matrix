@@ -1,5 +1,5 @@
 #include "middle_wifi.h"
-#include "esp32_px_matrix.h"
+#include "bsp/esp32_s3_matrix.h"
 #include "esp_check.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

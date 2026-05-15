@@ -1,5 +1,5 @@
 #include "middle_sensor.h"
-#include "esp32_px_matrix.h"
+#include "bsp/esp32_s3_matrix.h"
 #include "esp_check.h"
 #include "esp_log.h"
 #include "esp_timer.h"

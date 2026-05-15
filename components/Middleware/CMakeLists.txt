@@ -14,7 +14,7 @@ idf_component_register(
         "RTC"
         "UI"
     REQUIRES
-        esp32_s3_matrix_driver
+        esp32_s3_matrix
         esp_jpeg
         espressif__esp_codec_dev
         waveshare__qmi8658

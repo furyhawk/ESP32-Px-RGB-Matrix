@@ -1,4 +1,5 @@
-#include "display.h"
+#include "bsp/display.h"
+#include "common_ui.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -95,41 +96,41 @@ static void font_5x7_ui_deinit(void) {
 }
 
 static void show_four_lines_text(void) {
-  bool locked = display_lock(1000);
+  bool locked = bsp_display_lock(1000);
   if (!locked) {
     return;
   }
 
   lv_obj_t *scr = lv_scr_act();
   if (!scr) {
-    display_unlock();
+    bsp_display_unlock();
     return;
   }
 
   clear_screen_black(scr);
   font_5x7_ui_init(scr);
   font_5x7_ui_apply(welcome_lines, FONT_LINE_COUNT);
-  display_unlock();
+  bsp_display_unlock();
 
   vTaskDelay(pdMS_TO_TICKS(STEP_DELAY_MS));
 
-  locked = display_lock(1000);
+  locked = bsp_display_lock(1000);
   if (locked) {
     font_5x7_ui_deinit();
-    display_unlock();
+    bsp_display_unlock();
   }
 }
 
 
 void draw_circle_square(){
-    bool locked = display_lock(1000);
+    bool locked = bsp_display_lock(1000);
     if (!locked) {
         return;
     }
 
     lv_obj_t *screen = lv_scr_act();
     if (!screen) {
-        display_unlock();
+      bsp_display_unlock();
         return;
     }
 
@@ -165,7 +166,7 @@ void draw_circle_square(){
     lv_obj_set_style_bg_color(circle, lv_color_hex(0xFF0000), 0);
     lv_obj_set_style_bg_opa(circle, LV_OPA_COVER, 0);
 
-    display_unlock();
+    bsp_display_unlock();
 
     vTaskDelay(pdMS_TO_TICKS(STEP_DELAY_MS));
     lv_obj_set_style_bg_opa(circle, LV_OPA_TRANSP, 0);
@@ -176,18 +177,18 @@ void app_main(void) {
   init_display();
   int color_index = 0;
   const int num_colors = sizeof(rgbw_colors) / sizeof(rgbw_colors[0]);
-  bool locked = display_lock(1000);
+  bool locked = bsp_display_lock(1000);
   if (locked) {
     lv_obj_t *screen = lv_scr_act();
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
-    display_unlock();
+    bsp_display_unlock();
   }
 
   while (true) {
-    locked = display_lock(1000);
+    locked = bsp_display_lock(1000);
     if (locked) {
       rgbw_set_color(rgbw_colors[color_index].hex_color);
-      display_unlock();
+      bsp_display_unlock();
     }
     ESP_LOGI(TAG, "Current color: %s", rgbw_colors[color_index].name);
     vTaskDelay(pdMS_TO_TICKS(STEP_DELAY_MS));

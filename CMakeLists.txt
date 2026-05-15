@@ -12,11 +12,8 @@ if(DEFINED IDF_TARGET)
 endif()
 
 set(EXTRA_COMPONENT_DIRS
+    "${CMAKE_CURRENT_LIST_DIR}/components/esp32_s3_matrix"
     "${CMAKE_CURRENT_LIST_DIR}/components/Middleware"
-)
-
-set(EXCLUDE_COMPONENTS
-    esp32_s3_matrix
 )
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
