@@ -16,7 +16,7 @@
 #include <string.h>
 #include <sdkconfig.h>
 
-static const char *TAG = "esp32_s3_matrix";
+static const char *TAG = "esp32_s3_matrix_driver";
 /* Peripheral boundary: Display + LVGL port + HUB75 bridge
  * - Responsibilities:
  *     Manage LVGL display lifecycle and frame buffers.

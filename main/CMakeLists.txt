@@ -7,4 +7,5 @@ idf_component_register(
     REQUIRES
         esp32_s3_matrix_driver
         lvgl
+        Middleware
 )
