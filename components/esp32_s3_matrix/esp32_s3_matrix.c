@@ -821,12 +821,22 @@ esp_err_t bsp_init_wifi_apsta(const char *sta_ssid, const char *sta_pass)
     wifi_config_t ap_cfg;
     wifi_fill_open_ap_cfg(&ap_cfg, "ESP32_S3_MATRIX");
     wifi_start_apsta_with_ap_cfg(&ap_cfg);
+
+    wifi_config_t sta_cfg = { 0 };
+    bool has_sta_cfg = false;
     if (sta_ssid && sta_ssid[0] != '\0') {
-        wifi_config_t sta_cfg = { 0 };
         snprintf((char *)sta_cfg.sta.ssid, sizeof(sta_cfg.sta.ssid), "%s", sta_ssid);
         if (sta_pass) {
             snprintf((char *)sta_cfg.sta.password, sizeof(sta_cfg.sta.password), "%s", sta_pass);
         }
+        has_sta_cfg = true;
+    } else {
+        if (esp_wifi_get_config(WIFI_IF_STA, &sta_cfg) == ESP_OK && sta_cfg.sta.ssid[0] != '\0') {
+            has_sta_cfg = true;
+        }
+    }
+
+    if (has_sta_cfg) {
         esp_wifi_set_config(WIFI_IF_STA, &sta_cfg);
         esp_wifi_connect();
     }

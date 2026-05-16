@@ -6,11 +6,9 @@
 #include "middle_wifi.h"
 #include <stdio.h>
 
-#define WIFI_STA_SSID "CQ793"
-#define WIFI_STA_PASS "123456789"
-
 typedef struct {
   esp_err_t wifi_init_ret;
+  bool wifi_sta_configured;
   bool wifi_sta_connected;
   int wifi_sta_rssi;
   int wifi_ap_clients;
@@ -88,12 +86,18 @@ static void wifi_ui_apply(const wifi_state_t *st) {
    * 2. Format Status Text
    * ======================= */
   if (st->wifi_init_ret == ESP_OK) {
-    snprintf(b->line2_text, sizeof(b->line2_text), "AP:%u",
-             (unsigned)st->wifi_ap_clients);
-    snprintf(b->line3_text, sizeof(b->line3_text), "STA:%u",
-             (unsigned)(st->wifi_sta_connected != 0));
-    snprintf(b->line4_text, sizeof(b->line4_text), "RSSI:%d",
-             st->wifi_sta_rssi);
+    if (!st->wifi_sta_configured) {
+      snprintf(b->line2_text, sizeof(b->line2_text), "AP:ESP32_S3_MATRIX");
+      snprintf(b->line3_text, sizeof(b->line3_text), "PROV: ESPTouch");
+      snprintf(b->line4_text, sizeof(b->line4_text), "Use Espressif app");
+    } else {
+      snprintf(b->line2_text, sizeof(b->line2_text), "AP:%u",
+               (unsigned)st->wifi_ap_clients);
+      snprintf(b->line3_text, sizeof(b->line3_text), "STA:%u",
+               (unsigned)(st->wifi_sta_connected != 0));
+      snprintf(b->line4_text, sizeof(b->line4_text), "RSSI:%d",
+               st->wifi_sta_rssi);
+    }
   } else {
     snprintf(b->line2_text, sizeof(b->line2_text), "Error");
     snprintf(b->line3_text, sizeof(b->line3_text), "R:%d", st->wifi_init_ret);
@@ -112,6 +116,7 @@ static void wifi_data_update(lv_timer_t *t) {
   esp_err_t r = middle_wifi_get_status(&status);
   wifi_state.wifi_init_ret = r;
   if (r == ESP_OK) {
+    wifi_state.wifi_sta_configured = status.sta_configured;
     wifi_state.wifi_sta_connected = status.sta_connected;
     wifi_state.wifi_sta_rssi = status.sta_rssi;
     wifi_state.wifi_ap_clients = status.ap_clients;
@@ -132,7 +137,7 @@ void wifi_start(void) {
   /* =======================
    * 2. Configure & Enable WiFi
    * ======================= */
-  middle_wifi_set_sta_config(WIFI_STA_SSID, WIFI_STA_PASS);
+  middle_wifi_set_sta_config(NULL, NULL);
   wifi_state.wifi_init_ret = middle_wifi_init();
 
   /* =======================

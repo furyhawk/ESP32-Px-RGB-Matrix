@@ -17,6 +17,9 @@ idf_component_register(
     REQUIRES
         esp32_s3_matrix
         esp_jpeg
+        esp_event
+        esp_netif
+        esp_wifi
         espressif__esp_codec_dev
         waveshare__qmi8658
         waveshare__pcf85063a

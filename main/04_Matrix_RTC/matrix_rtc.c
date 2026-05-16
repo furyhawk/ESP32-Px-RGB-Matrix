@@ -4,6 +4,9 @@
 #include "common_ui.h"
 #include "font/font_5x7.h"
 #include "middle_rtc.h"
+#include "middle_wifi.h"
+#include "esp_sntp.h"
+#include <time.h>
 #include <stdio.h>
 
 typedef struct {
@@ -20,10 +23,53 @@ typedef struct {
 
 static RTC_UI ui;
 static rtc_state_t rtc_state;
+static bool rtc_synced_from_ntp = false;
 
 // the line5 label is used to show the rtc time in the matrix
 static lv_obj_t *line5_label;
 static char line5_text[96];
+
+static esp_err_t rtc_sync_from_sntp_once(void) {
+  middle_wifi_status_t ws = {0};
+  if (middle_wifi_get_status(&ws) != ESP_OK || !ws.sta_connected) {
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  esp_sntp_stop();
+  esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+  esp_sntp_setservername(0, "pool.ntp.org");
+  esp_sntp_setservername(1, "time.google.com");
+  esp_sntp_init();
+
+  time_t now = 0;
+  struct tm tm_now = {0};
+  for (int i = 0; i < 30; i++) {
+    time(&now);
+    localtime_r(&now, &tm_now);
+    if (tm_now.tm_year >= (2024 - 1900)) {
+      break;
+    }
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+
+  time(&now);
+  localtime_r(&now, &tm_now);
+  esp_sntp_stop();
+  if (tm_now.tm_year < (2024 - 1900)) {
+    return ESP_ERR_TIMEOUT;
+  }
+
+  pcf85063a_datetime_t t = {
+      .year = (uint16_t)(tm_now.tm_year + 1900),
+      .month = (uint8_t)(tm_now.tm_mon + 1),
+      .day = (uint8_t)tm_now.tm_mday,
+      .dotw = (uint8_t)tm_now.tm_wday,
+      .hour = (uint8_t)tm_now.tm_hour,
+      .min = (uint8_t)tm_now.tm_min,
+      .sec = (uint8_t)tm_now.tm_sec,
+  };
+  return middle_rtc_set_time(t);
+}
 
 static void rtc_ui_init(void) {
   /* =======================
@@ -162,6 +208,12 @@ static void rtc_ui_apply(const rtc_state_t *st) {
 }
 
 static void rtc_data_update(lv_timer_t *t) {
+  if (!rtc_synced_from_ntp) {
+    if (rtc_sync_from_sntp_once() == ESP_OK) {
+      rtc_synced_from_ntp = true;
+    }
+  }
+
   pcf85063a_datetime_t now;
   esp_err_t r = middle_rtc_get_time(&now);
   rtc_state.rtc_read_ret = r;
@@ -171,17 +223,22 @@ static void rtc_data_update(lv_timer_t *t) {
 }
 
 void rtc_start(void) {
+  rtc_synced_from_ntp = false;
   bool locked = bsp_display_lock(0);
   if (locked) {
     rtc_ui_init();
     bsp_display_unlock();
   }
-  middle_rtc_init();
-  middle_rtc_set_time(rtc_state.rtc_time);
+  rtc_state.rtc_init_ret = middle_rtc_init();
+
+  middle_wifi_set_sta_config(NULL, NULL);
+  (void)middle_wifi_init();
+
+  rtc_state.rtc_read_ret = middle_rtc_get_time(&rtc_state.rtc_time);
   middle_rtc_alarm(3);
   locked = bsp_display_lock(0);
   if (locked) {
-    ui_create_timer(1, rtc_data_update);
+    ui_create_timer(1000, rtc_data_update);
     bsp_display_unlock();
   }
   while (true) {
