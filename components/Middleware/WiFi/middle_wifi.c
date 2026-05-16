@@ -27,15 +27,31 @@ static bool prov_mgr_inited = false;
 static bool provisioning_running = false;
 
 #define WIFI_CONNECTED_BIT BIT0
+#define PROV_QR_BASE_URL "https://espressif.github.io/esp-jumpstart/qrcode.html"
 
 static middle_wifi_status_t cache = {
     .last_err = ESP_ERR_INVALID_STATE,
 };
 
+static bool wifi_sta_has_credentials(void)
+{
+    wifi_config_t sta_cfg = {0};
+    if (esp_wifi_get_config(WIFI_IF_STA, &sta_cfg) != ESP_OK) {
+        return false;
+    }
+    return sta_cfg.sta.ssid[0] != '\0';
+}
+
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        (void)esp_wifi_connect();
+        /* During provisioning, the provisioning manager controls STA connect flow. */
+        if (provisioning_running) {
+            return;
+        }
+        if (wifi_sta_has_credentials()) {
+            (void)esp_wifi_connect();
+        }
     }
 }
 
@@ -118,6 +134,12 @@ static esp_err_t start_ble_provisioning(void)
     }
     const char *service_key = NULL;
 
+    char qr_payload[160] = {0};
+    if (middle_wifi_get_prov_qr_payload(qr_payload, sizeof(qr_payload)) == ESP_OK) {
+        ESP_LOGI(TAG, "provisioning QR payload: %s", qr_payload);
+        ESP_LOGI(TAG, "provisioning QR URL: %s?data=%s", PROV_QR_BASE_URL, qr_payload);
+    }
+
     ESP_LOGI(TAG, "starting BLE provisioning service: %s", service_name);
     esp_err_t r = network_prov_mgr_start_provisioning(NETWORK_PROV_SECURITY_0,
                                                    NULL,
@@ -142,6 +164,22 @@ esp_err_t middle_wifi_get_prov_service_name(char *buf, size_t len)
     } else {
         snprintf(buf, len, "PROV_MATRIX");
     }
+    return ESP_OK;
+}
+
+esp_err_t middle_wifi_get_prov_qr_payload(char *buf, size_t len)
+{
+    if (!buf || len == 0) return ESP_ERR_INVALID_ARG;
+
+    char service_name[32] = {0};
+    esp_err_t r = middle_wifi_get_prov_service_name(service_name, sizeof(service_name));
+    if (r != ESP_OK) return r;
+
+    int n = snprintf(buf,
+                     len,
+                     "{\"ver\":\"v1\",\"name\":\"%s\",\"transport\":\"ble\",\"network\":\"wifi\"}",
+                     service_name);
+    if (n < 0 || (size_t)n >= len) return ESP_ERR_INVALID_SIZE;
     return ESP_OK;
 }
 
@@ -261,13 +299,12 @@ esp_err_t middle_wifi_init(void)
         }
     }
 
-    BaseType_t task_ok = xTaskCreate(wifi_refresh_task, "wifi_refresh_task", 3072, NULL,
+    BaseType_t task_ok = xTaskCreate(wifi_refresh_task, "wifi_refresh_task", 2048, NULL,
                                      tskIDLE_PRIORITY + 1, &wifi_task_handle);
     if (task_ok == pdPASS) return ESP_OK;
 
     wifi_task_handle = NULL;
-    inited = false;
-    bsp_wifi_stop();
-    cache.last_err = ESP_FAIL;
-    return ESP_FAIL;
+    cache.last_err = ESP_ERR_NO_MEM;
+    ESP_LOGW(TAG, "wifi refresh task creation failed; continuing without periodic refresh");
+    return ESP_ERR_NO_MEM;
 }

@@ -807,8 +807,30 @@ static esp_err_t wifi_start_apsta_with_ap_cfg(wifi_config_t *ap_cfg)
     return r;
 }
 
+static esp_err_t wifi_start_sta_only(void)
+{
+    esp_wifi_set_mode(WIFI_MODE_STA);
+
+    esp_err_t r = esp_wifi_start();
+    if (r == ESP_OK || r == ESP_ERR_WIFI_NOT_STOPPED) return ESP_OK;
+    return r;
+}
+
 esp_err_t bsp_init_wifi_apsta(const char *sta_ssid, const char *sta_pass)
 {
+    if (wifi_inited) {
+        if (sta_ssid && sta_ssid[0] != '\0') {
+            wifi_config_t sta_cfg = { 0 };
+            snprintf((char *)sta_cfg.sta.ssid, sizeof(sta_cfg.sta.ssid), "%s", sta_ssid);
+            if (sta_pass) {
+                snprintf((char *)sta_cfg.sta.password, sizeof(sta_cfg.sta.password), "%s", sta_pass);
+            }
+            esp_wifi_set_config(WIFI_IF_STA, &sta_cfg);
+            esp_wifi_connect();
+        }
+        return ESP_OK;
+    }
+
     esp_err_t r = nvs_ensure_inited();
     if (r != ESP_OK) return r;
     esp_netif_init();
@@ -818,10 +840,6 @@ esp_err_t bsp_init_wifi_apsta(const char *sta_ssid, const char *sta_pass)
     if (!netif_sta || !netif_ap) return ESP_ERR_NO_MEM;
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
-    wifi_config_t ap_cfg;
-    wifi_fill_open_ap_cfg(&ap_cfg, "ESP32_S3_MATRIX");
-    wifi_start_apsta_with_ap_cfg(&ap_cfg);
-
     wifi_config_t sta_cfg = { 0 };
     bool has_sta_cfg = false;
     if (sta_ssid && sta_ssid[0] != '\0') {
@@ -834,6 +852,14 @@ esp_err_t bsp_init_wifi_apsta(const char *sta_ssid, const char *sta_pass)
         if (esp_wifi_get_config(WIFI_IF_STA, &sta_cfg) == ESP_OK && sta_cfg.sta.ssid[0] != '\0') {
             has_sta_cfg = true;
         }
+    }
+
+    if (has_sta_cfg) {
+        wifi_config_t ap_cfg;
+        wifi_fill_open_ap_cfg(&ap_cfg, "ESP32_S3_MATRIX");
+        wifi_start_apsta_with_ap_cfg(&ap_cfg);
+    } else {
+        wifi_start_sta_only();
     }
 
     if (has_sta_cfg) {
@@ -850,6 +876,7 @@ esp_err_t bsp_wifi_stop(void)
     if (!wifi_inited) return ESP_OK;
     esp_wifi_stop();
     esp_wifi_set_mode(WIFI_MODE_NULL);
+    wifi_inited = false;
     return ESP_OK;
 }
 

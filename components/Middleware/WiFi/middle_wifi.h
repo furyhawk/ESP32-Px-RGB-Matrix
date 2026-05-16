@@ -25,5 +25,9 @@ esp_err_t middle_wifi_get_status(middle_wifi_status_t *out); // Get current WiFi
 // Get the provisioning service name (e.g. "PROV_01B1E8"). Buffer must be provided by caller.
 esp_err_t middle_wifi_get_prov_service_name(char *buf, size_t len);
 
+// Build provisioning QR payload JSON for ESP provisioning apps.
+// Example: {"ver":"v1","name":"PROV_01B1E8","transport":"ble","network":"wifi"}
+esp_err_t middle_wifi_get_prov_qr_payload(char *buf, size_t len);
+
 // Returns true if provisioning is currently running (service active)
 bool middle_wifi_is_provisioning_running(void);

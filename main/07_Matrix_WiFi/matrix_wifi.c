@@ -38,15 +38,16 @@ static void wifi_qr_hide(void) {
 
 static bool wifi_qr_show(const char *service_name) {
 #if LV_USE_QRCODE
-  if (!service_name || service_name[0] == '\0') {
-    return false;
-  }
-
   char payload[160] = {0};
-  snprintf(payload,
-           sizeof(payload),
-           "{\"ver\":\"v1\",\"name\":\"%s\",\"transport\":\"ble\",\"network\":\"wifi\"}",
-           service_name);
+  if (middle_wifi_get_prov_qr_payload(payload, sizeof(payload)) != ESP_OK) {
+    if (!service_name || service_name[0] == '\0') {
+      return false;
+    }
+    snprintf(payload,
+             sizeof(payload),
+             "{\"ver\":\"v1\",\"name\":\"%s\",\"transport\":\"ble\",\"network\":\"wifi\"}",
+             service_name);
+  }
 
   if (!prov_qr) {
     prov_qr = lv_qrcode_create(lv_scr_act());
