@@ -13,6 +13,7 @@ idf_component_register(
         "Audio"
         "RTC"
         "UI"
+        "${CMAKE_SOURCE_DIR}/main"
     REQUIRES
         esp32_s3_matrix
         esp_jpeg

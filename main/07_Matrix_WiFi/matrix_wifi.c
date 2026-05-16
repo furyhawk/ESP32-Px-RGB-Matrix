@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "common_ui.h"
+#include "font/font_5x7.h"
 #include "middle_wifi.h"
 #include <stdio.h>
 
@@ -32,10 +33,10 @@ static void wifi_ui_init(void) {
   /* =======================
    * 2. Layout & Fonts
    * ======================= */
-  lv_obj_set_style_text_font(b->line1_label, LV_FONT_DEFAULT, 0);
-  lv_obj_set_style_text_font(b->line2_label, LV_FONT_DEFAULT, 0);
-  lv_obj_set_style_text_font(b->line3_label, LV_FONT_DEFAULT, 0);
-  lv_obj_set_style_text_font(b->line4_label, LV_FONT_DEFAULT, 0);
+  lv_obj_set_style_text_font(b->line1_label, &lv_font_5x7, 0);
+  lv_obj_set_style_text_font(b->line2_label, &lv_font_5x7, 0);
+  lv_obj_set_style_text_font(b->line3_label, &lv_font_5x7, 0);
+  lv_obj_set_style_text_font(b->line4_label, &lv_font_5x7, 0);
   /* =======================
    * 3. line1 (Align Top Left)
    * ======================= */

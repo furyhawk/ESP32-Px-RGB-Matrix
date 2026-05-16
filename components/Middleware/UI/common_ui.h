@@ -43,6 +43,12 @@ void middle_fmt_fixed1(char *dest, size_t size, int32_t val_x10);
 void ui_create_timer(uint32_t period_ms, lv_timer_cb_t cb);
 
 /**
+ * @brief Delete all LVGL timers created by ui_create_timer().
+ *        Call this before switching modules to prevent stale timer callbacks.
+ */
+void ui_delete_all_timers(void);
+
+/**
  * @brief Initialize common example screen widgets and layout.
  */
 void common_ui_init(void);

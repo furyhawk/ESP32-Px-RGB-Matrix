@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "common_ui.h"
+#include "font/font_5x7.h"
 #include "middle_sdcard.h"
 #include "sdkconfig.h"
 #include <stdio.h>
@@ -32,7 +33,7 @@ static void sdcard_ui_init(void) {
   /* =======================
    *  2. line1（Align top left）
    * ======================= */
-  lv_obj_set_style_text_font(b->line1_label, LV_FONT_DEFAULT, 0);
+  lv_obj_set_style_text_font(b->line1_label, &lv_font_5x7, 0);
   lv_obj_set_width(b->line1_label, lv_pct(100));
   lv_obj_set_style_text_align(b->line1_label, LV_TEXT_ALIGN_LEFT, 0);
   lv_obj_align(b->line1_label, LV_ALIGN_TOP_MID, 0, -1);
@@ -50,7 +51,7 @@ static void sdcard_ui_init(void) {
    *  4. line3（Align center）
    * ======================= */
   lv_obj_clear_flag(b->line3_label, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_set_style_text_font(b->line3_label, LV_FONT_DEFAULT, 0);
+  lv_obj_set_style_text_font(b->line3_label, &lv_font_5x7, 0);
   lv_obj_set_width(b->line3_label, lv_pct(100));
   lv_obj_set_style_text_align(b->line3_label, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align_to(b->line3_label, b->line2_label, LV_ALIGN_OUT_BOTTOM_MID, 0, -2);

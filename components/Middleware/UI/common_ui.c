@@ -2,6 +2,7 @@
 #include "lvgl.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "font/font_5x7.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -65,27 +66,54 @@ void common_ui_init(void) {
     lv_obj_set_width(ui->line1_label, lv_pct(100));
     lv_obj_set_style_text_align(ui->line1_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(ui->line1_label, text_color, 0);
+    lv_obj_set_style_text_font(ui->line1_label, &lv_font_5x7, 0);
     lv_obj_align(ui->line1_label, LV_ALIGN_TOP_MID, 0, 0);
     ui->line2_label = lv_label_create(scr);
     lv_obj_set_width(ui->line2_label, lv_pct(100));
     lv_obj_set_style_text_align(ui->line2_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(ui->line2_label, text_color, 0);
+    lv_obj_set_style_text_font(ui->line2_label, &lv_font_5x7, 0);
+    lv_obj_set_style_pad_top(ui->line2_label, 1, 0);
     lv_obj_align_to(ui->line2_label, ui->line1_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
     ui->line3_label = lv_label_create(scr);
     lv_obj_set_width(ui->line3_label, lv_pct(100));
     lv_obj_set_style_text_align(ui->line3_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(ui->line3_label, text_color, 0);
+    lv_obj_set_style_text_font(ui->line3_label, &lv_font_5x7, 0);
+    lv_obj_set_style_pad_top(ui->line3_label, 1, 0);
     lv_obj_align_to(ui->line3_label, ui->line2_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
     ui->line4_label = lv_label_create(scr);
     lv_obj_set_width(ui->line4_label, lv_pct(100));
     lv_obj_set_style_text_align(ui->line4_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(ui->line4_label, text_color, 0);
+    lv_obj_set_style_text_font(ui->line4_label, &lv_font_5x7, 0);
+    lv_obj_set_style_pad_top(ui->line4_label, 1, 0);
     lv_obj_align_to(ui->line4_label, ui->line3_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
 }
 
+#define MAX_UI_TIMERS 8
+static lv_timer_t *ui_timers[MAX_UI_TIMERS];
+static int ui_timer_count = 0;
+
 /**
- * Install a periodic LVGL timer.
+ * Install a periodic LVGL timer and track the handle.
  */
 void ui_create_timer(uint32_t period_ms, lv_timer_cb_t cb) {
-    lv_timer_create(cb, period_ms, NULL);
+    lv_timer_t *t = lv_timer_create(cb, period_ms, NULL);
+    if (ui_timer_count < MAX_UI_TIMERS) {
+        ui_timers[ui_timer_count++] = t;
+    }
+}
+
+/**
+ * Delete all timers created by ui_create_timer().
+ */
+void ui_delete_all_timers(void) {
+    for (int i = 0; i < ui_timer_count; i++) {
+        if (ui_timers[i]) {
+            lv_timer_delete(ui_timers[i]);
+            ui_timers[i] = NULL;
+        }
+    }
+    ui_timer_count = 0;
 }

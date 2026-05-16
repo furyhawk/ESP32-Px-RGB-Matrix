@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "common_ui.h"
+#include "font/font_5x7.h"
 #include "middle_rtc.h"
 #include <stdio.h>
 
@@ -52,7 +53,7 @@ static void rtc_ui_init(void) {
   lv_obj_set_width(line5_label, lv_pct(100));
   lv_obj_set_style_text_color(line5_label, lv_color_hex(0xFFFFFF), 0);
   lv_obj_set_style_text_align(line5_label, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_set_style_text_font(line5_label, LV_FONT_DEFAULT, 0);
+  lv_obj_set_style_text_font(line5_label, &lv_font_5x7, 0);
 
   /* =======================
    * 4. line1（Align top left）

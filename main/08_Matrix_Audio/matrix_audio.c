@@ -1,5 +1,6 @@
 
 #include "common_ui.h"
+#include "font/font_5x7.h"
 #include "middle_audio.h"
 #include "bsp/display.h"
 #include "freertos/FreeRTOS.h"
@@ -57,7 +58,7 @@ static void audio_ui_init(void) {
     /* =======================
      * 3. line1 (Align Top Left)
      * ======================= */
-    lv_obj_set_style_text_font(b->line1_label, LV_FONT_DEFAULT, 0);
+    lv_obj_set_style_text_font(b->line1_label, &lv_font_5x7, 0);
     lv_obj_set_width(b->line1_label, LV_SIZE_CONTENT);
     lv_obj_set_style_text_align(b->line1_label, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_pad_left(b->line1_label, 2, 0);
@@ -67,7 +68,7 @@ static void audio_ui_init(void) {
      * 4. line2 (Align Top Left)
      * ======================= */
     lv_obj_clear_flag(b->line2_label, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_style_text_font(b->line2_label, LV_FONT_DEFAULT, 0);
+    lv_obj_set_style_text_font(b->line2_label, &lv_font_5x7, 0);
     lv_obj_set_width(b->line2_label, LV_SIZE_CONTENT);
     lv_obj_set_style_text_align(b->line2_label, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_pad_left(b->line2_label, 2, 0);
@@ -76,7 +77,7 @@ static void audio_ui_init(void) {
     /* =======================
      * 5. m1_val_label (Align Left)
      * ======================= */
-    lv_obj_set_style_text_font(m1_val_label, LV_FONT_DEFAULT, 0);
+    lv_obj_set_style_text_font(m1_val_label, &lv_font_5x7, 0);
     lv_obj_set_width(m1_val_label, lv_pct(100));
     lv_obj_set_style_text_align(m1_val_label, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_pad_left(m1_val_label, 2, 0);
@@ -86,7 +87,7 @@ static void audio_ui_init(void) {
      * 6. line3 (Align Top Left)
      * ======================= */
     lv_obj_clear_flag(b->line3_label, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_style_text_font(b->line3_label, LV_FONT_DEFAULT, 0);
+    lv_obj_set_style_text_font(b->line3_label, &lv_font_5x7, 0);
     lv_obj_set_width(b->line3_label, lv_pct(100));
     lv_obj_set_style_text_align(b->line3_label, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_pad_left(b->line3_label, 2, 0);
@@ -95,7 +96,7 @@ static void audio_ui_init(void) {
     /* =======================
      * 7. m2_val_label (Align Left)
      * ======================= */
-    lv_obj_set_style_text_font(m2_val_label, LV_FONT_DEFAULT, 0);
+    lv_obj_set_style_text_font(m2_val_label, &lv_font_5x7, 0);
     lv_obj_set_width(m2_val_label, lv_pct(100));
     lv_obj_set_style_text_align(m2_val_label, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_pad_left(m2_val_label, 2, 0);
@@ -105,7 +106,7 @@ static void audio_ui_init(void) {
      * 8. line4 (Align Top Left)
      * ======================= */
     lv_obj_clear_flag(b->line4_label, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_set_style_text_font(b->line4_label, LV_FONT_DEFAULT, 0);
+    lv_obj_set_style_text_font(b->line4_label, &lv_font_5x7, 0);
     lv_obj_set_width(b->line4_label, lv_pct(100));
     lv_obj_set_style_text_align(b->line4_label, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_pad_left(b->line4_label, 2, 0);
@@ -114,7 +115,7 @@ static void audio_ui_init(void) {
     /* =======================
      * 9. status_label (Align Top Right)
      * ======================= */
-    lv_obj_set_style_text_font(status_label, LV_FONT_DEFAULT, 0);
+    lv_obj_set_style_text_font(status_label, &lv_font_5x7, 0);
     lv_obj_set_width(status_label, LV_SIZE_CONTENT);
     lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_align(status_label, LV_ALIGN_TOP_RIGHT, -2, 2);

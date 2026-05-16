@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "common_ui.h"
+#include "font/font_5x7.h"
 #include "middle_sensor.h"
 #include <stdio.h>
 
@@ -35,7 +36,7 @@ static void shtc3_ui_init(void) {
   hum_val_label = lv_label_create(scr);
   lv_obj_set_style_text_align(b->line1_label, LV_TEXT_ALIGN_LEFT, 0);
   lv_obj_set_style_text_color(hum_val_label, lv_color_hex(0xFFFFFF), 0);
-  lv_obj_set_style_text_font(hum_val_label, LV_FONT_DEFAULT, 0);
+  lv_obj_set_style_text_font(hum_val_label, &lv_font_5x7, 0);
   lv_obj_set_width(hum_val_label, lv_pct(100));
   lv_obj_set_style_text_align(hum_val_label, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align_to(hum_val_label, b->line4_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);

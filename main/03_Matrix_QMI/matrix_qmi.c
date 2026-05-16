@@ -1,5 +1,6 @@
 
 #include "matrix_qmi.h"
+#include "font/font_5x7.h"
 
 typedef struct {
   esp_err_t qmi_init_ret;
@@ -45,13 +46,13 @@ static void qmi_ui_init(void) {
   /* =======================
    * 3. Layout & Fonts
    * ======================= */
-  lv_obj_set_style_text_font(b->line1_label, LV_FONT_DEFAULT, 0);
-  lv_obj_set_style_text_font(b->line2_label, LV_FONT_DEFAULT, 0);
-  lv_obj_set_style_text_font(b->line3_label, LV_FONT_DEFAULT, 0);
-  lv_obj_set_style_text_font(b->line4_label, LV_FONT_DEFAULT, 0);
-  lv_obj_set_style_text_font(qmi_line1_label, LV_FONT_DEFAULT, 0);
-  lv_obj_set_style_text_font(qmi_line2_label, LV_FONT_DEFAULT, 0);
-  lv_obj_set_style_text_font(qmi_line3_label, LV_FONT_DEFAULT, 0);
+  lv_obj_set_style_text_font(b->line1_label, &lv_font_5x7, 0);
+  lv_obj_set_style_text_font(b->line2_label, &lv_font_5x7, 0);
+  lv_obj_set_style_text_font(b->line3_label, &lv_font_5x7, 0);
+  lv_obj_set_style_text_font(b->line4_label, &lv_font_5x7, 0);
+  lv_obj_set_style_text_font(qmi_line1_label, &lv_font_5x7, 0);
+  lv_obj_set_style_text_font(qmi_line2_label, &lv_font_5x7, 0);
+  lv_obj_set_style_text_font(qmi_line3_label, &lv_font_5x7, 0);
   /* =======================
    * 4. line1（Align top left）
    * ======================= */
