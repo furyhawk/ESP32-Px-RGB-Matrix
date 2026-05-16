@@ -1,105 +1,71 @@
 #include "bsp/display.h"
+#include "bsp/esp32_s3_matrix.h"
+#include "bsp/config.h"
 #include "common_ui.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "iot_button.h"
+#include "button_gpio.h"
 #include "lvgl.h"
 #include "font/font_5x7.h"
 #include <stdbool.h>
 
-static const char *TAG = "RGBW";
+// Tab modules
+#include "03_Matrix_QMI/matrix_qmi.h"
+#include "04_Matrix_RTC/matrix_rtc.h"
+#include "05_Matrix_SDCard/matrix_sdcard.h"
+#include "06_Matrix_SHTC3/matrix_shtc3.h"
+#include "07_Matrix_WiFi/matrix_wifi.h"
+#include "08_Matrix_Audio/matrix_audio.h"
 
-#define FONT_LINE_COUNT 4
+static const char *TAG = "Tab-UI";
+
 #define STEP_DELAY_MS 2000
+#define NUM_TABS 6
 
-
+// Tab configuration
 typedef struct {
   const char *name;
-  uint32_t hex_color;
-} rgbw_color_t;
+  void (*start_func)(void);
+} tab_config_t;
 
-typedef struct {
-  const char *text;
-  uint32_t start_color;
-  uint32_t end_color;
-} gradient_line_t;
-
-static const rgbw_color_t rgbw_colors[] = {{"Red", 0xFF0000},
-                                           {"Green", 0x00FF00},
-                                           {"Blue", 0x0000FF},
-                                           {"White", 0xFFFFFF}};
-
-static const gradient_line_t welcome_lines[FONT_LINE_COUNT] = {
-    {"Welcome", 0xFF0000, 0xFFFF00},
-    {"Waveshare", 0x00FF00, 0x00FFFF},
-    {"RGB MATRIX", 0x00A0FF, 0xFF00A0},
-    {"P4 64x32", 0xFF00FF, 0xFFFFFF},
+static const tab_config_t tabs[NUM_TABS] = {
+    {"QMI", qmi_start},
+    {"RTC", rtc_start},
+    {"SDCard", sdcard_start},
+    {"SHTC3", shtc3_start},
+    {"WiFi", wifi_start},
+    {"Audio", audio_start},
 };
 
-static void rgbw_set_color(uint32_t hex_color) {
-  lv_obj_t *screen = lv_scr_act();
-  lv_obj_set_style_bg_color(screen, lv_color_hex(hex_color), 0);
-}
+// Global state
+static lv_obj_t *tabview = NULL;
+static int current_tab = 0;
+static button_handle_t boot_button = NULL;
 
-static lv_obj_t *font_ui_lines[FONT_LINE_COUNT];
-
-static void get_screen_size(lv_obj_t *screen, lv_coord_t *width, lv_coord_t *height) {
-  if (!screen || !width || !height) return;
-
-  *width = lv_obj_get_width(screen);
-  *height = lv_obj_get_height(screen);
-}
-
-static void clear_screen_black(lv_obj_t *screen) {
-  if (!screen) return;
-  lv_obj_clean(screen);
-  lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
-  lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
-}
-
-static void font_5x7_ui_init(lv_obj_t *scr) {
-  if (!scr) return;
-
-  lv_coord_t screen_height = lv_obj_get_height(scr);
-  lv_coord_t row_height = screen_height / FONT_LINE_COUNT;
-
-  for (int i = 0; i < FONT_LINE_COUNT; i++) {
-    lv_obj_t *label = lv_label_create(scr);
-    font_ui_lines[i] = label;
-    lv_obj_set_width(label, lv_pct(100));
-    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(label, &lv_font_5x7, 0);
-    lv_label_set_recolor(label, true);
-    lv_obj_set_style_text_line_space(label, 0, 0);
-    lv_obj_set_style_text_letter_space(label, 1, 0);
-    lv_obj_set_style_pad_all(label, 0, 0);
-    lv_obj_set_pos(label, 0, row_height * i);
-  }
-}
-
-static void font_5x7_ui_apply(const gradient_line_t *lines, size_t count) {
-  for (size_t i = 0; i < count && i < FONT_LINE_COUNT; i++) {
-    if (!font_ui_lines[i]) continue;
-    set_label_gradient_text(font_ui_lines[i], lines[i].text ? lines[i].text : "",
-                            lines[i].start_color, lines[i].end_color);
-  }
-}
-
-static void font_5x7_ui_deinit(void) {
-  for (int i = 0; i < FONT_LINE_COUNT; i++) {
-    if (font_ui_lines[i]) {
-      lv_obj_del(font_ui_lines[i]);
-      font_ui_lines[i] = NULL;
+/**
+ * Boot button callback - switch to next tab on single click
+ */
+static void boot_button_callback(void *button_handle, void *usr_data) {
+  current_tab = (current_tab + 1) % NUM_TABS;
+  ESP_LOGI(TAG, "Switching to tab: %s", tabs[current_tab].name);
+  
+  if (tabview) {
+    bool locked = bsp_display_lock(1000);
+    if (locked) {
+      lv_tabview_set_act(tabview, current_tab, LV_ANIM_ON);
+      bsp_display_unlock();
     }
   }
 }
 
-static void show_four_lines_text(void) {
+/**
+ * Initialize tab view with all modules
+ */
+static void tabview_init(void) {
   bool locked = bsp_display_lock(1000);
-  if (!locked) {
-    return;
-  }
+  if (!locked) return;
 
   lv_obj_t *scr = lv_scr_act();
   if (!scr) {
@@ -107,96 +73,70 @@ static void show_four_lines_text(void) {
     return;
   }
 
-  clear_screen_black(scr);
-  font_5x7_ui_init(scr);
-  font_5x7_ui_apply(welcome_lines, FONT_LINE_COUNT);
+  // Create tabview
+  tabview = lv_tabview_create(scr);
+  lv_obj_set_size(tabview, lv_pct(100), lv_pct(100));
+
+  // Create tabs for each module
+  for (int i = 0; i < NUM_TABS; i++) {
+    lv_obj_t *tab = lv_tabview_add_tab(tabview, tabs[i].name);
+    lv_obj_set_style_bg_color(tab, lv_color_hex(0x000000), 0);
+  }
+
   bsp_display_unlock();
+}
 
-  vTaskDelay(pdMS_TO_TICKS(STEP_DELAY_MS));
-
-  locked = bsp_display_lock(1000);
-  if (locked) {
-    font_5x7_ui_deinit();
-    bsp_display_unlock();
+/**
+ * Start current tab module
+ */
+static void start_current_tab(void) {
+  if (current_tab < NUM_TABS && tabs[current_tab].start_func) {
+    ESP_LOGI(TAG, "Starting tab: %s", tabs[current_tab].name);
+    tabs[current_tab].start_func();
   }
 }
 
-
-void draw_circle_square(){
-    bool locked = bsp_display_lock(1000);
-    if (!locked) {
-        return;
-    }
-
-    lv_obj_t *screen = lv_scr_act();
-    if (!screen) {
-      bsp_display_unlock();
-        return;
-    }
-
-    clear_screen_black(screen);
-
-    lv_coord_t screen_width = 0;
-    lv_coord_t screen_height = 0;
-    lv_coord_t shape_size = 24;
-    lv_coord_t shape_gap = 10;
-    lv_coord_t total_width = (shape_size * 2) + shape_gap;
-    lv_coord_t start_x = 0;
-    lv_coord_t start_y = 0;
-
-    get_screen_size(screen, &screen_width, &screen_height);
-    start_x = (screen_width - total_width) / 2;
-    start_y = (screen_height - shape_size) / 2;
-
-    lv_obj_t *square = lv_obj_create(screen);
-    lv_obj_clear_flag(square, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_size(square, shape_size, shape_size);
-    lv_obj_set_pos(square, start_x, start_y);
-    lv_obj_set_style_radius(square, 0, 0);
-    lv_obj_set_style_border_width(square, 0, 0);
-    lv_obj_set_style_bg_color(square, lv_color_hex(0x00FF00), 0);
-    lv_obj_set_style_bg_opa(square, LV_OPA_COVER, 0);
-
-    lv_obj_t *circle = lv_obj_create(screen);
-    lv_obj_clear_flag(circle, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_size(circle, shape_size, shape_size);
-    lv_obj_set_pos(circle, start_x + shape_size + shape_gap, start_y);
-    lv_obj_set_style_radius(circle, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_border_width(circle, 0, 0);
-    lv_obj_set_style_bg_color(circle, lv_color_hex(0xFF0000), 0);
-    lv_obj_set_style_bg_opa(circle, LV_OPA_COVER, 0);
-
-    bsp_display_unlock();
-
-    vTaskDelay(pdMS_TO_TICKS(STEP_DELAY_MS));
-    lv_obj_set_style_bg_opa(circle, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_bg_opa(square, LV_OPA_TRANSP, 0);
+/**
+ * Initialize boot button for tab switching
+ */
+static void button_init(void) {
+  // Configure boot button (GPIO 0, active low)
+  const button_gpio_config_t gpio_cfg = {
+      .gpio_num = BSP_BUTTON_MAIN_IO,
+      .active_level = 0,
+  };
+  
+  const button_config_t btn_cfg = {0};
+  
+  esp_err_t ret = iot_button_new_gpio_device(&btn_cfg, &gpio_cfg, &boot_button);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to create button: %s", esp_err_to_name(ret));
+    return;
+  }
+  
+  // Register single-click event to switch tabs
+  ret = iot_button_register_cb(boot_button, BUTTON_SINGLE_CLICK, NULL, boot_button_callback, NULL);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to register button callback: %s", esp_err_to_name(ret));
+  } else {
+    ESP_LOGI(TAG, "Boot button configured for tab switching");
+  }
 }
 
 void app_main(void) {
   init_display();
-  int color_index = 0;
-  const int num_colors = sizeof(rgbw_colors) / sizeof(rgbw_colors[0]);
-  bool locked = bsp_display_lock(1000);
-  if (locked) {
-    lv_obj_t *screen = lv_scr_act();
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
-    bsp_display_unlock();
-  }
-
+  
+  // Initialize button for tab switching
+  button_init();
+  
+  // Create tab view
+  tabview_init();
+  
+  // Start the first tab module
+  start_current_tab();
+  
+  // Keep the app running
   while (true) {
-    locked = bsp_display_lock(1000);
-    if (locked) {
-      rgbw_set_color(rgbw_colors[color_index].hex_color);
-      bsp_display_unlock();
-    }
-    ESP_LOGI(TAG, "Current color: %s", rgbw_colors[color_index].name);
     vTaskDelay(pdMS_TO_TICKS(STEP_DELAY_MS));
-    color_index++;
-    if (color_index >= num_colors) {
-      draw_circle_square();
-      show_four_lines_text();
-      color_index = 0;
-    }
   }
 }

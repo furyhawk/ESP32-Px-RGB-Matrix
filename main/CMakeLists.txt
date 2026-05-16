@@ -2,10 +2,17 @@ idf_component_register(
     SRCS
         "main.c"
         "font/font_5x7.c"
+        "03_Matrix_QMI/matrix_qmi.c"
+        "04_Matrix_RTC/matrix_rtc.c"
+        "05_Matrix_SDCard/matrix_sdcard.c"
+        "06_Matrix_SHTC3/matrix_shtc3.c"
+        "07_Matrix_WiFi/matrix_wifi.c"
+        "08_Matrix_Audio/matrix_audio.c"
     INCLUDE_DIRS
         "."
     REQUIRES
         esp32_s3_matrix
         lvgl
         Middleware
+        button
 )

@@ -20,3 +20,10 @@ CONFIG_HUB75_PIN_OE=2
 CONFIG_HUB75_PIN_CLK=41
 CONFIG_LV_FONT_UNSCII_16=y
 CONFIG_LV_FONT_UNSCII_8=y
+
+# Custom partition table for larger app size
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# Enable binary compression to reduce app size
+CONFIG_APP_COMPRESS_LEVEL_6=y
