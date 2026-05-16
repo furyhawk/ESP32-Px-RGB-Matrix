@@ -60,9 +60,19 @@ static void prov_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         ESP_LOGI(TAG, "received credentials for SSID: %s", (const char *)wifi_sta_cfg->ssid);
         break;
     }
-    case WIFI_PROV_CRED_FAIL:
-        ESP_LOGW(TAG, "provisioning failed, retry from app");
+    case WIFI_PROV_CRED_FAIL: {
+        const wifi_prov_sta_fail_reason_t *reason = (const wifi_prov_sta_fail_reason_t *)event_data;
+        const char *reason_str = "unknown";
+        if (reason) {
+            reason_str = (*reason == WIFI_PROV_STA_AUTH_ERROR)
+                             ? "Wi-Fi auth failed"
+                             : "Wi-Fi AP not found";
+        }
+        ESP_LOGW(TAG, "provisioning failed: %s", reason_str);
+        /* Mirrors Espressif example behavior: allow retry without rebooting. */
+        wifi_prov_mgr_reset_sm_state_on_failure();
         break;
+    }
     case WIFI_PROV_CRED_SUCCESS:
         ESP_LOGI(TAG, "provisioning credentials accepted");
         break;
@@ -77,17 +87,6 @@ static void prov_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     default:
         break;
     }
-}
-
-static void make_softap_service_name(char *out, size_t out_size)
-{
-    uint8_t mac[6] = {0};
-    if (!out || out_size == 0) return;
-    if (esp_wifi_get_mac(WIFI_IF_AP, mac) == ESP_OK) {
-        snprintf(out, out_size, "ESP32M_%02X%02X%02X", mac[3], mac[4], mac[5]);
-        return;
-    }
-    snprintf(out, out_size, "ESP32M_SETUP");
 }
 
 static esp_err_t start_softap_provisioning(void)
@@ -110,8 +109,7 @@ static esp_err_t start_softap_provisioning(void)
         return ESP_OK;
     }
 
-    char service_name[16] = {0};
-    make_softap_service_name(service_name, sizeof(service_name));
+    char service_name[16] = "ESP32_S3_MATRIX";
     const char *service_key = NULL;
     const char *pop = "matrix123";
 
