@@ -88,7 +88,7 @@ static void wifi_ui_apply(const wifi_state_t *st) {
   if (st->wifi_init_ret == ESP_OK) {
     if (!st->wifi_sta_configured) {
       snprintf(b->line2_text, sizeof(b->line2_text), "AP:ESP32_S3_MATRIX");
-      snprintf(b->line3_text, sizeof(b->line3_text), "PROV: ESPTouch");
+      snprintf(b->line3_text, sizeof(b->line3_text), "PROV: SoftAP");
       snprintf(b->line4_text, sizeof(b->line4_text), "Use Espressif app");
     } else {
       snprintf(b->line2_text, sizeof(b->line2_text), "AP:%u",

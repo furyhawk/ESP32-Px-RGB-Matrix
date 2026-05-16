@@ -3,11 +3,12 @@
 #include "esp_check.h"
 #include "esp_event.h"
 #include "esp_log.h"
-#include "esp_smartconfig.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
+#include "wifi_provisioning/manager.h"
+#include "wifi_provisioning/scheme_softap.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -17,16 +18,15 @@ static char sta_ssid[33] = {0};
 static char sta_pass[65] = {0};
 static bool inited = false;
 static TaskHandle_t wifi_task_handle = NULL;
-static TaskHandle_t sc_task_handle = NULL;
 static EventGroupHandle_t wifi_event_group = NULL;
 static esp_event_handler_instance_t wifi_any_id = NULL;
 static esp_event_handler_instance_t ip_got_ip = NULL;
-static esp_event_handler_instance_t sc_any_id = NULL;
+static esp_event_handler_instance_t prov_any_id = NULL;
 static bool event_handlers_registered = false;
+static bool prov_mgr_inited = false;
 static bool provisioning_running = false;
 
 #define WIFI_CONNECTED_BIT BIT0
-#define WIFI_SC_DONE_BIT BIT1
 
 static middle_wifi_status_t cache = {
     .last_err = ESP_ERR_INVALID_STATE,
@@ -46,59 +46,88 @@ static void ip_event_handler(void *arg, esp_event_base_t event_base, int32_t eve
     }
 }
 
-static void sc_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+static void prov_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
-    if (event_base != SC_EVENT) return;
+    if (event_base != WIFI_PROV_EVENT) return;
 
-    if (event_id == SC_EVENT_GOT_SSID_PSWD) {
-        const smartconfig_event_got_ssid_pswd_t *evt = (const smartconfig_event_got_ssid_pswd_t *)event_data;
-        wifi_config_t wifi_config = {0};
-        memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(evt->ssid));
-        memcpy(wifi_config.sta.password, evt->password, sizeof(evt->password));
-        if (evt->bssid_set) {
-            wifi_config.sta.bssid_set = evt->bssid_set;
-            memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(evt->bssid));
-        }
-        (void)esp_wifi_disconnect();
-        (void)esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-        (void)esp_wifi_connect();
+    switch (event_id) {
+    case WIFI_PROV_START:
+        provisioning_running = true;
+        ESP_LOGI(TAG, "SoftAP provisioning started");
+        break;
+    case WIFI_PROV_CRED_RECV: {
+        const wifi_sta_config_t *wifi_sta_cfg = (const wifi_sta_config_t *)event_data;
+        ESP_LOGI(TAG, "received credentials for SSID: %s", (const char *)wifi_sta_cfg->ssid);
+        break;
     }
-
-    if (event_id == SC_EVENT_SEND_ACK_DONE && wifi_event_group) {
-        xEventGroupSetBits(wifi_event_group, WIFI_SC_DONE_BIT);
+    case WIFI_PROV_CRED_FAIL:
+        ESP_LOGW(TAG, "provisioning failed, retry from app");
+        break;
+    case WIFI_PROV_CRED_SUCCESS:
+        ESP_LOGI(TAG, "provisioning credentials accepted");
+        break;
+    case WIFI_PROV_END:
+        provisioning_running = false;
+        if (prov_mgr_inited) {
+            wifi_prov_mgr_deinit();
+            prov_mgr_inited = false;
+        }
+        ESP_LOGI(TAG, "SoftAP provisioning ended");
+        break;
+    default:
+        break;
     }
 }
 
-static void smartconfig_task(void *arg)
+static void make_softap_service_name(char *out, size_t out_size)
 {
-    ESP_LOGI(TAG, "starting ESPTouch provisioning");
-    provisioning_running = true;
-    xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT | WIFI_SC_DONE_BIT);
-
-    smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
-    if (esp_smartconfig_start(&cfg) != ESP_OK) {
-        provisioning_running = false;
-        sc_task_handle = NULL;
-        vTaskDelete(NULL);
+    uint8_t mac[6] = {0};
+    if (!out || out_size == 0) return;
+    if (esp_wifi_get_mac(WIFI_IF_AP, mac) == ESP_OK) {
+        snprintf(out, out_size, "ESP32M_%02X%02X%02X", mac[3], mac[4], mac[5]);
         return;
     }
+    snprintf(out, out_size, "ESP32M_SETUP");
+}
 
-    while (true) {
-        EventBits_t bits = xEventGroupWaitBits(wifi_event_group,
-                                               WIFI_CONNECTED_BIT | WIFI_SC_DONE_BIT,
-                                               pdFALSE,
-                                               pdFALSE,
-                                               portMAX_DELAY);
-        if (bits & WIFI_SC_DONE_BIT) {
-            (void)esp_smartconfig_stop();
-            break;
-        }
+static esp_err_t start_softap_provisioning(void)
+{
+    if (provisioning_running) return ESP_OK;
+
+    wifi_prov_mgr_config_t prov_cfg = {
+        .scheme = wifi_prov_scheme_softap,
+        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE,
+    };
+    ESP_RETURN_ON_ERROR(wifi_prov_mgr_init(prov_cfg), TAG, "wifi_prov_mgr_init failed");
+    prov_mgr_inited = true;
+
+    bool provisioned = false;
+    ESP_RETURN_ON_ERROR(wifi_prov_mgr_is_provisioned(&provisioned), TAG, "wifi_prov_mgr_is_provisioned failed");
+    if (provisioned) {
+        wifi_prov_mgr_deinit();
+        prov_mgr_inited = false;
+        provisioning_running = false;
+        return ESP_OK;
     }
 
-    provisioning_running = false;
-    sc_task_handle = NULL;
-    ESP_LOGI(TAG, "ESPTouch provisioning complete");
-    vTaskDelete(NULL);
+    char service_name[16] = {0};
+    make_softap_service_name(service_name, sizeof(service_name));
+    const char *service_key = NULL;
+    const char *pop = "matrix123";
+
+    ESP_LOGI(TAG, "starting SoftAP provisioning service: %s", service_name);
+    esp_err_t r = wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_1,
+                                                   (const void *)pop,
+                                                   service_name,
+                                                   service_key);
+    if (r != ESP_OK) {
+        wifi_prov_mgr_deinit();
+        prov_mgr_inited = false;
+        provisioning_running = false;
+        return r;
+    }
+    provisioning_running = true;
+    return ESP_OK;
 }
 
 static esp_err_t wifi_register_handlers_once(void)
@@ -118,13 +147,13 @@ static esp_err_t wifi_register_handlers_once(void)
                                                              &ip_got_ip),
                         TAG,
                         "register ip event failed");
-    ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(SC_EVENT,
+    ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(WIFI_PROV_EVENT,
                                                              ESP_EVENT_ANY_ID,
-                                                             &sc_event_handler,
+                                                             &prov_event_handler,
                                                              NULL,
-                                                             &sc_any_id),
+                                                             &prov_any_id),
                         TAG,
-                        "register smartconfig event failed");
+                        "register provisioning event failed");
     event_handlers_registered = true;
     return ESP_OK;
 }
@@ -205,16 +234,10 @@ esp_err_t middle_wifi_init(void)
     inited = true;
     (void)wifi_info_refresh();
 
-    if (!cache.sta_configured && !sc_task_handle) {
-        BaseType_t sc_ok = xTaskCreate(smartconfig_task,
-                                       "wifi_sc_task",
-                                       4096,
-                                       NULL,
-                                       tskIDLE_PRIORITY + 1,
-                                       &sc_task_handle);
-        if (sc_ok != pdPASS) {
-            sc_task_handle = NULL;
-            cache.last_err = ESP_FAIL;
+    if (!cache.sta_configured) {
+        esp_err_t pr = start_softap_provisioning();
+        if (pr != ESP_OK) {
+            cache.last_err = pr;
         }
     }
 
