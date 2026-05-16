@@ -8,7 +8,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
 #include "wifi_provisioning/manager.h"
-#include "wifi_provisioning/scheme_softap.h"
+#include "wifi_provisioning/scheme_ble.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -53,7 +53,7 @@ static void prov_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     switch (event_id) {
     case WIFI_PROV_START:
         provisioning_running = true;
-        ESP_LOGI(TAG, "SoftAP provisioning started");
+        ESP_LOGI(TAG, "BLE provisioning started");
         break;
     case WIFI_PROV_CRED_RECV: {
         const wifi_sta_config_t *wifi_sta_cfg = (const wifi_sta_config_t *)event_data;
@@ -82,20 +82,20 @@ static void prov_event_handler(void *arg, esp_event_base_t event_base, int32_t e
             wifi_prov_mgr_deinit();
             prov_mgr_inited = false;
         }
-        ESP_LOGI(TAG, "SoftAP provisioning ended");
+        ESP_LOGI(TAG, "BLE provisioning ended");
         break;
     default:
         break;
     }
 }
 
-static esp_err_t start_softap_provisioning(void)
+static esp_err_t start_ble_provisioning(void)
 {
     if (provisioning_running) return ESP_OK;
 
     wifi_prov_mgr_config_t prov_cfg = {
-        .scheme = wifi_prov_scheme_softap,
-        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE,
+        .scheme = wifi_prov_scheme_ble,
+        .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM,
     };
     ESP_RETURN_ON_ERROR(wifi_prov_mgr_init(prov_cfg), TAG, "wifi_prov_mgr_init failed");
     prov_mgr_inited = true;
@@ -109,13 +109,18 @@ static esp_err_t start_softap_provisioning(void)
         return ESP_OK;
     }
 
-    char service_name[16] = "ESP32_S3_MATRIX";
+    char service_name[16] = {0};
+    uint8_t mac[6] = {0};
+    if (esp_wifi_get_mac(WIFI_IF_STA, mac) == ESP_OK) {
+        snprintf(service_name, sizeof(service_name), "PROV_%02X%02X%02X", mac[3], mac[4], mac[5]);
+    } else {
+        snprintf(service_name, sizeof(service_name), "PROV_MATRIX");
+    }
     const char *service_key = NULL;
-    const char *pop = "matrix123";
 
-    ESP_LOGI(TAG, "starting SoftAP provisioning service: %s", service_name);
-    esp_err_t r = wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_1,
-                                                   (const void *)pop,
+    ESP_LOGI(TAG, "starting BLE provisioning service: %s", service_name);
+    esp_err_t r = wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_0,
+                                                   NULL,
                                                    service_name,
                                                    service_key);
     if (r != ESP_OK) {
@@ -233,7 +238,7 @@ esp_err_t middle_wifi_init(void)
     (void)wifi_info_refresh();
 
     if (!cache.sta_configured) {
-        esp_err_t pr = start_softap_provisioning();
+        esp_err_t pr = start_ble_provisioning();
         if (pr != ESP_OK) {
             cache.last_err = pr;
         }
