@@ -5,6 +5,7 @@
 #include "font/font_5x7.h"
 #include "middle_wifi.h"
 #include <stdio.h>
+#include <string.h>
 
 typedef struct {
   esp_err_t wifi_init_ret;
@@ -20,6 +21,67 @@ typedef struct {
 
 static WiFi_UI ui;
 static wifi_state_t wifi_state;
+#if LV_USE_QRCODE
+static lv_obj_t *prov_qr = NULL;
+static char qr_last_payload[160] = {0};
+#endif
+
+static void wifi_qr_hide(void) {
+#if LV_USE_QRCODE
+  if (prov_qr) {
+    lv_obj_del(prov_qr);
+    prov_qr = NULL;
+  }
+  qr_last_payload[0] = '\0';
+#endif
+}
+
+static bool wifi_qr_show(const char *service_name) {
+#if LV_USE_QRCODE
+  if (!service_name || service_name[0] == '\0') {
+    return false;
+  }
+
+  char payload[160] = {0};
+  snprintf(payload,
+           sizeof(payload),
+           "{\"ver\":\"v1\",\"name\":\"%s\",\"transport\":\"ble\",\"network\":\"wifi\"}",
+           service_name);
+
+  if (!prov_qr) {
+    prov_qr = lv_qrcode_create(lv_scr_act());
+    if (!prov_qr) {
+      return false;
+    }
+
+    lv_coord_t size = LV_MIN(lv_obj_get_width(lv_scr_act()), lv_obj_get_height(lv_scr_act())) - 2;
+    if (size < 18) {
+      size = 18;
+    }
+    lv_qrcode_set_size(prov_qr, size);
+    lv_qrcode_set_dark_color(prov_qr, lv_color_black());
+    lv_qrcode_set_light_color(prov_qr, lv_color_white());
+    lv_obj_set_style_border_width(prov_qr, 1, 0);
+    lv_obj_set_style_border_color(prov_qr, lv_color_white(), 0);
+  }
+
+  if (strcmp(qr_last_payload, payload) != 0) {
+    if (lv_qrcode_update(prov_qr, payload, strlen(payload)) != LV_RESULT_OK) {
+      lv_obj_add_flag(prov_qr, LV_OBJ_FLAG_HIDDEN);
+      return false;
+    }
+    strncpy(qr_last_payload, payload, sizeof(qr_last_payload) - 1);
+    qr_last_payload[sizeof(qr_last_payload) - 1] = '\0';
+  }
+
+  lv_obj_clear_flag(prov_qr, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_center(prov_qr);
+  return true;
+#else
+  (void)service_name;
+  return false;
+#endif
+}
 
 static void wifi_ui_init(void) {
   /* =======================
@@ -87,10 +149,28 @@ static void wifi_ui_apply(const wifi_state_t *st) {
    * ======================= */
   if (st->wifi_init_ret == ESP_OK) {
     if (!st->wifi_sta_configured) {
-      snprintf(b->line2_text, sizeof(b->line2_text), "BLE: PROV_xxxxxx");
-      snprintf(b->line3_text, sizeof(b->line3_text), "PROV: BLE Sec0");
-      snprintf(b->line4_text, sizeof(b->line4_text), "Use ESP BLE app");
+      char prov_name[32] = {0};
+      if (middle_wifi_get_prov_service_name(prov_name, sizeof(prov_name)) == ESP_OK) {
+        snprintf(b->line2_text, sizeof(b->line2_text), "%s", prov_name);
+      } else {
+        snprintf(b->line2_text, sizeof(b->line2_text), "PROV_??????");
+      }
+      if (middle_wifi_is_provisioning_running()) {
+        bool qr_ok = wifi_qr_show(prov_name);
+        if (qr_ok) {
+          snprintf(b->line3_text, sizeof(b->line3_text), "Provisioning: ACTIVE");
+          snprintf(b->line4_text, sizeof(b->line4_text), "Scan QR with ESP app");
+        } else {
+          snprintf(b->line3_text, sizeof(b->line3_text), "Provisioning: ACTIVE");
+          snprintf(b->line4_text, sizeof(b->line4_text), "QR unavailable on panel");
+        }
+      } else {
+        wifi_qr_hide();
+        snprintf(b->line3_text, sizeof(b->line3_text), "Provisioning: idle");
+        snprintf(b->line4_text, sizeof(b->line4_text), "Open ESP BLE app");
+      }
     } else {
+      wifi_qr_hide();
       snprintf(b->line2_text, sizeof(b->line2_text), "AP:%u",
                (unsigned)st->wifi_ap_clients);
       snprintf(b->line3_text, sizeof(b->line3_text), "STA:%u",
@@ -99,6 +179,7 @@ static void wifi_ui_apply(const wifi_state_t *st) {
                st->wifi_sta_rssi);
     }
   } else {
+    wifi_qr_hide();
     snprintf(b->line2_text, sizeof(b->line2_text), "Error");
     snprintf(b->line3_text, sizeof(b->line3_text), "R:%d", st->wifi_init_ret);
     b->line4_text[0] = '\0';

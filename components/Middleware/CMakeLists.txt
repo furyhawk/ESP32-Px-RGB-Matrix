@@ -14,13 +14,13 @@ idf_component_register(
         "RTC"
         "UI"
         "${CMAKE_SOURCE_DIR}/main"
+    PRIV_REQUIRES network_provisioning
     REQUIRES
         esp32_s3_matrix
         esp_jpeg
         esp_event
         esp_netif
         esp_wifi
-        wifi_provisioning
         espressif__esp_codec_dev
         waveshare__qmi8658
         waveshare__pcf85063a

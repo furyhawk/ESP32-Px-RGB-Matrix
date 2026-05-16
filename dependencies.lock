@@ -29,6 +29,16 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 4.1.6
+  espressif/cjson:
+    component_hash: e788323270d90738662d66fffa910bfe1fba019bba087f01557e70c40485b469
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.7.19~2
   espressif/cmake_utilities:
     component_hash: 05165f30922b422b4b90c08845e6d449329b97370fbd06309803d8cb539d79e3
     dependencies:
@@ -86,7 +96,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.5.4
+    version: 6.0.1
   lvgl/lvgl:
     component_hash: 17e68bfd21f0edf4c3ee838e2273da840bf3930e5dbc3bfa6c1190c3aed41f9f
     dependencies: []
@@ -127,6 +137,7 @@ dependencies:
 direct_dependencies:
 - esphome/esp-hub75
 - espressif/button
+- espressif/cjson
 - espressif/esp-dsp
 - espressif/esp_codec_dev
 - espressif/esp_jpeg
@@ -136,6 +147,6 @@ direct_dependencies:
 - pedrominatel/shtc3
 - waveshare/pcf85063a
 - waveshare/qmi8658
-manifest_hash: 3540609a50e3233234e4c862a61d22fdd08528db5b41e4bc60002cff53b62f21
+manifest_hash: feffb21b4937c383d7d5853cd68e2942ee4e0601b871230712280b5ebf5d0d19
 target: esp32s3
-version: 2.0.0
+version: 3.0.0

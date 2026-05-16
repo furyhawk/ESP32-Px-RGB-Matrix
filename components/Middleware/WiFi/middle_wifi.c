@@ -7,8 +7,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
-#include "wifi_provisioning/manager.h"
-#include "wifi_provisioning/scheme_ble.h"
+#include "network_provisioning/manager.h"
+#include "network_provisioning/scheme_ble.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -48,41 +48,41 @@ static void ip_event_handler(void *arg, esp_event_base_t event_base, int32_t eve
 
 static void prov_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
-    if (event_base != WIFI_PROV_EVENT) return;
+    if (event_base != NETWORK_PROV_EVENT) return;
 
     switch (event_id) {
-    case WIFI_PROV_START:
+    case NETWORK_PROV_START:
         provisioning_running = true;
-        ESP_LOGI(TAG, "BLE provisioning started");
+        ESP_LOGI(TAG, "provisioning started");
         break;
-    case WIFI_PROV_CRED_RECV: {
+    case NETWORK_PROV_WIFI_CRED_RECV: {
         const wifi_sta_config_t *wifi_sta_cfg = (const wifi_sta_config_t *)event_data;
         ESP_LOGI(TAG, "received credentials for SSID: %s", (const char *)wifi_sta_cfg->ssid);
         break;
     }
-    case WIFI_PROV_CRED_FAIL: {
-        const wifi_prov_sta_fail_reason_t *reason = (const wifi_prov_sta_fail_reason_t *)event_data;
+    case NETWORK_PROV_WIFI_CRED_FAIL: {
+        const network_prov_wifi_sta_fail_reason_t *reason = (const network_prov_wifi_sta_fail_reason_t *)event_data;
         const char *reason_str = "unknown";
         if (reason) {
-            reason_str = (*reason == WIFI_PROV_STA_AUTH_ERROR)
+            reason_str = (*reason == NETWORK_PROV_WIFI_STA_AUTH_ERROR)
                              ? "Wi-Fi auth failed"
                              : "Wi-Fi AP not found";
         }
         ESP_LOGW(TAG, "provisioning failed: %s", reason_str);
         /* Mirrors Espressif example behavior: allow retry without rebooting. */
-        wifi_prov_mgr_reset_sm_state_on_failure();
+        network_prov_mgr_reset_wifi_sm_state_on_failure();
         break;
     }
-    case WIFI_PROV_CRED_SUCCESS:
+    case NETWORK_PROV_WIFI_CRED_SUCCESS:
         ESP_LOGI(TAG, "provisioning credentials accepted");
         break;
-    case WIFI_PROV_END:
+    case NETWORK_PROV_END:
         provisioning_running = false;
         if (prov_mgr_inited) {
-            wifi_prov_mgr_deinit();
+            network_prov_mgr_deinit();
             prov_mgr_inited = false;
         }
-        ESP_LOGI(TAG, "BLE provisioning ended");
+        ESP_LOGI(TAG, "provisioning ended");
         break;
     default:
         break;
@@ -93,17 +93,17 @@ static esp_err_t start_ble_provisioning(void)
 {
     if (provisioning_running) return ESP_OK;
 
-    wifi_prov_mgr_config_t prov_cfg = {
-        .scheme = wifi_prov_scheme_ble,
-        .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM,
+    network_prov_mgr_config_t prov_cfg = {
+        .scheme = network_prov_scheme_ble,
+        .scheme_event_handler = NETWORK_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM,
     };
-    ESP_RETURN_ON_ERROR(wifi_prov_mgr_init(prov_cfg), TAG, "wifi_prov_mgr_init failed");
+    ESP_RETURN_ON_ERROR(network_prov_mgr_init(prov_cfg), TAG, "network_prov_mgr_init failed");
     prov_mgr_inited = true;
 
     bool provisioned = false;
-    ESP_RETURN_ON_ERROR(wifi_prov_mgr_is_provisioned(&provisioned), TAG, "wifi_prov_mgr_is_provisioned failed");
+    ESP_RETURN_ON_ERROR(network_prov_mgr_is_wifi_provisioned(&provisioned), TAG, "network_prov_mgr_is_wifi_provisioned failed");
     if (provisioned) {
-        wifi_prov_mgr_deinit();
+        network_prov_mgr_deinit();
         prov_mgr_inited = false;
         provisioning_running = false;
         return ESP_OK;
@@ -119,18 +119,35 @@ static esp_err_t start_ble_provisioning(void)
     const char *service_key = NULL;
 
     ESP_LOGI(TAG, "starting BLE provisioning service: %s", service_name);
-    esp_err_t r = wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_0,
+    esp_err_t r = network_prov_mgr_start_provisioning(NETWORK_PROV_SECURITY_0,
                                                    NULL,
                                                    service_name,
                                                    service_key);
     if (r != ESP_OK) {
-        wifi_prov_mgr_deinit();
+        network_prov_mgr_deinit();
         prov_mgr_inited = false;
         provisioning_running = false;
         return r;
     }
     provisioning_running = true;
     return ESP_OK;
+}
+
+esp_err_t middle_wifi_get_prov_service_name(char *buf, size_t len)
+{
+    if (!buf || len == 0) return ESP_ERR_INVALID_ARG;
+    uint8_t mac[6] = {0};
+    if (esp_wifi_get_mac(WIFI_IF_STA, mac) == ESP_OK) {
+        snprintf(buf, len, "PROV_%02X%02X%02X", mac[3], mac[4], mac[5]);
+    } else {
+        snprintf(buf, len, "PROV_MATRIX");
+    }
+    return ESP_OK;
+}
+
+bool middle_wifi_is_provisioning_running(void)
+{
+    return provisioning_running;
 }
 
 static esp_err_t wifi_register_handlers_once(void)
@@ -150,7 +167,7 @@ static esp_err_t wifi_register_handlers_once(void)
                                                              &ip_got_ip),
                         TAG,
                         "register ip event failed");
-    ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(WIFI_PROV_EVENT,
+    ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(NETWORK_PROV_EVENT,
                                                              ESP_EVENT_ANY_ID,
                                                              &prov_event_handler,
                                                              NULL,
