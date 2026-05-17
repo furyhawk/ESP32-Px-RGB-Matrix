@@ -11,7 +11,7 @@
 #include <stdlib.h>
 
 #ifndef MATRIX_RTC_LOCAL_TZ
-#define MATRIX_RTC_LOCAL_TZ "CST-8"
+#define MATRIX_RTC_LOCAL_TZ "SGT-8"
 #endif
 
 typedef struct {

@@ -29,12 +29,12 @@ typedef struct {
 } tab_config_t;
 
 static const tab_config_t tabs[NUM_TABS] = {
-    {"QMI",    qmi_start},
-    {"RTC",    rtc_start},
-    {"SDCard", sdcard_start},
-    {"SHTC3",  shtc3_start},
-    {"WiFi",   wifi_start},
-    {"Audio",  audio_start},
+  {"RTC",    rtc_start},
+  {"SHTC3",  shtc3_start},
+  {"QMI",    qmi_start},
+  {"WiFi",   wifi_start},
+  {"SDCard", sdcard_start},
+  {"Audio",  audio_start},
 };
 
 static QueueHandle_t     tab_switch_queue = NULL;
