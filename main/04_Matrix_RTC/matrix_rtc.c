@@ -8,6 +8,11 @@
 #include "esp_sntp.h"
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+#ifndef MATRIX_RTC_LOCAL_TZ
+#define MATRIX_RTC_LOCAL_TZ "CST-8"
+#endif
 
 typedef struct {
   esp_err_t rtc_init_ret;
@@ -28,6 +33,11 @@ static bool rtc_synced_from_ntp = false;
 // the line5 label is used to show the rtc time in the matrix
 static lv_obj_t *line5_label;
 static char line5_text[96];
+
+static void rtc_configure_local_tz(void) {
+  setenv("TZ", MATRIX_RTC_LOCAL_TZ, 1);
+  tzset();
+}
 
 static esp_err_t rtc_sync_from_sntp_once(void) {
   middle_wifi_status_t ws = {0};
@@ -223,6 +233,7 @@ static void rtc_data_update(lv_timer_t *t) {
 }
 
 void rtc_start(void) {
+  rtc_configure_local_tz();
   rtc_synced_from_ntp = false;
   bool locked = bsp_display_lock(0);
   if (locked) {
