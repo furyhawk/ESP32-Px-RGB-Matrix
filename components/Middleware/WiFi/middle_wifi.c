@@ -8,7 +8,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
 #include "network_provisioning/manager.h"
-#include "network_provisioning/scheme_ble.h"
+#include "network_provisioning/scheme_softap.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -28,6 +28,7 @@ static bool provisioning_running = false;
 
 #define WIFI_CONNECTED_BIT BIT0
 #define PROV_QR_BASE_URL "https://espressif.github.io/esp-jumpstart/qrcode.html"
+#define PROV_POP "abcd1234"
 
 static middle_wifi_status_t cache = {
     .last_err = ESP_ERR_INVALID_STATE,
@@ -105,13 +106,13 @@ static void prov_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     }
 }
 
-static esp_err_t start_ble_provisioning(void)
+static esp_err_t start_softap_provisioning(void)
 {
     if (provisioning_running) return ESP_OK;
 
     network_prov_mgr_config_t prov_cfg = {
-        .scheme = network_prov_scheme_ble,
-        .scheme_event_handler = NETWORK_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM,
+        .scheme = network_prov_scheme_softap,
+        .scheme_event_handler = NETWORK_PROV_EVENT_HANDLER_NONE,
     };
     ESP_RETURN_ON_ERROR(network_prov_mgr_init(prov_cfg), TAG, "network_prov_mgr_init failed");
     prov_mgr_inited = true;
@@ -140,9 +141,9 @@ static esp_err_t start_ble_provisioning(void)
         ESP_LOGI(TAG, "provisioning QR URL: %s?data=%s", PROV_QR_BASE_URL, qr_payload);
     }
 
-    ESP_LOGI(TAG, "starting BLE provisioning service: %s", service_name);
-    esp_err_t r = network_prov_mgr_start_provisioning(NETWORK_PROV_SECURITY_0,
-                                                   NULL,
+    ESP_LOGI(TAG, "starting SoftAP provisioning service: %s", service_name);
+    esp_err_t r = network_prov_mgr_start_provisioning(NETWORK_PROV_SECURITY_1,
+                                                   (const void *)PROV_POP,
                                                    service_name,
                                                    service_key);
     if (r != ESP_OK) {
@@ -177,8 +178,9 @@ esp_err_t middle_wifi_get_prov_qr_payload(char *buf, size_t len)
 
     int n = snprintf(buf,
                      len,
-                     "{\"ver\":\"v1\",\"name\":\"%s\",\"transport\":\"ble\",\"network\":\"wifi\"}",
-                     service_name);
+                     "{\"ver\":\"v1\",\"name\":\"%s\",\"pop\":\"%s\",\"transport\":\"softap\"}",
+                     service_name,
+                     PROV_POP);
     if (n < 0 || (size_t)n >= len) return ESP_ERR_INVALID_SIZE;
     return ESP_OK;
 }
@@ -293,7 +295,7 @@ esp_err_t middle_wifi_init(void)
     (void)wifi_info_refresh();
 
     if (!cache.sta_configured) {
-        esp_err_t pr = start_ble_provisioning();
+        esp_err_t pr = start_softap_provisioning();
         if (pr != ESP_OK) {
             cache.last_err = pr;
         }

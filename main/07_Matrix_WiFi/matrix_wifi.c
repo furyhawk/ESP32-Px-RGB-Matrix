@@ -45,7 +45,7 @@ static bool wifi_qr_show(const char *service_name) {
     }
     snprintf(payload,
              sizeof(payload),
-             "{\"ver\":\"v1\",\"name\":\"%s\",\"transport\":\"ble\",\"network\":\"wifi\"}",
+             "{\"ver\":\"v1\",\"name\":\"%s\",\"pop\":\"abcd1234\",\"transport\":\"softap\"}",
              service_name);
   }
 
@@ -168,7 +168,7 @@ static void wifi_ui_apply(const wifi_state_t *st) {
       } else {
         wifi_qr_hide();
         snprintf(b->line3_text, sizeof(b->line3_text), "Provisioning: idle");
-        snprintf(b->line4_text, sizeof(b->line4_text), "Open ESP BLE app");
+        snprintf(b->line4_text, sizeof(b->line4_text), "Open ESP SoftAP app");
       }
     } else {
       wifi_qr_hide();
