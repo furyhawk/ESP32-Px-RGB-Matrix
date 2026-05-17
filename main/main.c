@@ -1,14 +1,11 @@
-#include "bsp/display.h"
-#include "bsp/esp32_s3_matrix.h"
 #include "bsp/config.h"
+#include "bsp/display.h"
+#include "button_gpio.h"
 #include "common_ui.h"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/task.h"
 #include "iot_button.h"
-#include "button_gpio.h"
-#include "lvgl.h"
 #include <stdbool.h>
 
 // Tab modules
@@ -29,29 +26,27 @@ typedef struct {
 } tab_config_t;
 
 static const tab_config_t tabs[NUM_TABS] = {
-  {"RTC",    rtc_start},
-  {"SHTC3",  shtc3_start},
-  {"QMI",    qmi_start},
-  {"WiFi",   wifi_start},
-  {"SDCard", sdcard_start},
-  {"Audio",  audio_start},
+    {"RTC", rtc_start},   {"SHTC3", shtc3_start},   {"QMI", qmi_start},
+    {"WiFi", wifi_start}, {"SDCard", sdcard_start}, {"Audio", audio_start},
 };
 
-static QueueHandle_t     tab_switch_queue = NULL;
-static TaskHandle_t      module_task_handle = NULL;
-static button_handle_t   boot_button = NULL;
-static volatile int      current_tab = 0;
+static QueueHandle_t tab_switch_queue = NULL;
+static TaskHandle_t module_task_handle = NULL;
+static button_handle_t boot_button = NULL;
+static volatile int current_tab = 0;
 
 /* -----------------------------------------------------------------------
  * Module task wrapper – each module blocks in its own while(true) loop.
  * ----------------------------------------------------------------------- */
-typedef struct { int idx; } module_task_arg_t;
-static module_task_arg_t module_arg;   /* single instance, re-used per switch */
+typedef struct {
+  int idx;
+} module_task_arg_t;
+static module_task_arg_t module_arg; /* single instance, re-used per switch */
 
 static void module_task_fn(void *arg) {
   int idx = ((module_task_arg_t *)arg)->idx;
   ESP_LOGI(TAG, "Starting module: %s", tabs[idx].name);
-  tabs[idx].start_func();   /* blocks until task is deleted */
+  tabs[idx].start_func(); /* blocks until task is deleted */
   vTaskDelete(NULL);
 }
 
@@ -96,7 +91,7 @@ static void switch_to_tab(int idx) {
  * ----------------------------------------------------------------------- */
 static void button_init(void) {
   const button_gpio_config_t gpio_cfg = {
-      .gpio_num    = BSP_BUTTON_MAIN_IO,
+      .gpio_num = BSP_BUTTON_MAIN_IO,
       .active_level = 0,
   };
   const button_config_t btn_cfg = {0};
