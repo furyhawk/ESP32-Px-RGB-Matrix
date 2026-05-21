@@ -1,8 +1,8 @@
 #include "bsp/display.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "common_ui.h"
 #include "font/font_5x7.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "middle_wifi.h"
 #include <stdio.h>
 #include <string.h>
@@ -43,9 +43,9 @@ static bool wifi_qr_show(const char *service_name) {
     if (!service_name || service_name[0] == '\0') {
       return false;
     }
-    snprintf(payload,
-             sizeof(payload),
-             "{\"ver\":\"v1\",\"name\":\"%s\",\"pop\":\"abcd1234\",\"transport\":\"softap\"}",
+    snprintf(payload, sizeof(payload),
+             "{\"ver\":\"v1\",\"name\":\"%s\",\"pop\":\"abcd1234\","
+             "\"transport\":\"softap\"}",
              service_name);
   }
 
@@ -55,7 +55,9 @@ static bool wifi_qr_show(const char *service_name) {
       return false;
     }
 
-    lv_coord_t size = LV_MIN(lv_obj_get_width(lv_scr_act()), lv_obj_get_height(lv_scr_act())) - 2;
+    lv_coord_t size = LV_MIN(lv_obj_get_width(lv_scr_act()),
+                             lv_obj_get_height(lv_scr_act())) -
+                      2;
     if (size < 18) {
       size = 18;
     }
@@ -110,21 +112,24 @@ static void wifi_ui_init(void) {
   lv_obj_clear_flag(b->line2_label, LV_OBJ_FLAG_HIDDEN);
   lv_obj_set_width(b->line2_label, lv_pct(100));
   lv_obj_set_style_text_align(b->line2_label, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align_to(b->line2_label, b->line1_label, LV_ALIGN_OUT_BOTTOM_MID, 0,-1);
+  lv_obj_align_to(b->line2_label, b->line1_label, LV_ALIGN_OUT_BOTTOM_MID, 0,
+                  -1);
   /* =======================
    * 5. line3 (Align Mid)
    * ======================= */
   lv_obj_clear_flag(b->line3_label, LV_OBJ_FLAG_HIDDEN);
   lv_obj_set_width(b->line3_label, lv_pct(100));
   lv_obj_set_style_text_align(b->line3_label, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align_to(b->line3_label, b->line2_label, LV_ALIGN_OUT_BOTTOM_MID, 0,-1);
+  lv_obj_align_to(b->line3_label, b->line2_label, LV_ALIGN_OUT_BOTTOM_MID, 0,
+                  -1);
   /* =======================
    * 6. line4 (Align Mid)
    * ======================= */
   lv_obj_clear_flag(b->line4_label, LV_OBJ_FLAG_HIDDEN);
   lv_obj_set_width(b->line4_label, lv_pct(100));
   lv_obj_set_style_text_align(b->line4_label, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align_to(b->line4_label, b->line3_label, LV_ALIGN_OUT_BOTTOM_MID, 0,-1);
+  lv_obj_align_to(b->line4_label, b->line3_label, LV_ALIGN_OUT_BOTTOM_MID, 0,
+                  -1);
 }
 
 static void wifi_ui_apply(const wifi_state_t *st) {
@@ -135,15 +140,15 @@ static void wifi_ui_apply(const wifi_state_t *st) {
   snprintf(b->line1_text, sizeof(b->line1_text), "WIFI");
   lv_label_set_text(b->line1_label, b->line1_text);
   switch (st->wifi_init_ret) {
-    case ESP_OK:
-        lv_obj_set_style_text_color(b->line1_label, lv_color_hex(0x00FF00), 0);
-        break;
-    case ESP_ERR_NOT_SUPPORTED:
-        lv_obj_set_style_text_color(b->line1_label, lv_color_hex(0x808080), 0);
-        break;
-    default:
-        lv_obj_set_style_text_color(b->line1_label, lv_color_hex(0xFF0000), 0);
-        break;
+  case ESP_OK:
+    lv_obj_set_style_text_color(b->line1_label, lv_color_hex(0x00FF00), 0);
+    break;
+  case ESP_ERR_NOT_SUPPORTED:
+    lv_obj_set_style_text_color(b->line1_label, lv_color_hex(0x808080), 0);
+    break;
+  default:
+    lv_obj_set_style_text_color(b->line1_label, lv_color_hex(0xFF0000), 0);
+    break;
   }
   /* =======================
    * 2. Format Status Text
@@ -151,7 +156,8 @@ static void wifi_ui_apply(const wifi_state_t *st) {
   if (st->wifi_init_ret == ESP_OK) {
     if (!st->wifi_sta_configured) {
       char prov_name[32] = {0};
-      if (middle_wifi_get_prov_service_name(prov_name, sizeof(prov_name)) == ESP_OK) {
+      if (middle_wifi_get_prov_service_name(prov_name, sizeof(prov_name)) ==
+          ESP_OK) {
         snprintf(b->line2_text, sizeof(b->line2_text), "%s", prov_name);
       } else {
         snprintf(b->line2_text, sizeof(b->line2_text), "PROV_??????");
@@ -159,11 +165,15 @@ static void wifi_ui_apply(const wifi_state_t *st) {
       if (middle_wifi_is_provisioning_running()) {
         bool qr_ok = wifi_qr_show(prov_name);
         if (qr_ok) {
-          snprintf(b->line3_text, sizeof(b->line3_text), "Provisioning: ACTIVE");
-          snprintf(b->line4_text, sizeof(b->line4_text), "Scan QR with ESP app");
+          snprintf(b->line3_text, sizeof(b->line3_text),
+                   "Provisioning: ACTIVE");
+          snprintf(b->line4_text, sizeof(b->line4_text),
+                   "Scan QR with ESP app");
         } else {
-          snprintf(b->line3_text, sizeof(b->line3_text), "Provisioning: ACTIVE");
-          snprintf(b->line4_text, sizeof(b->line4_text), "QR unavailable on panel");
+          snprintf(b->line3_text, sizeof(b->line3_text),
+                   "Provisioning: ACTIVE");
+          snprintf(b->line4_text, sizeof(b->line4_text),
+                   "QR unavailable on panel");
         }
       } else {
         wifi_qr_hide();
